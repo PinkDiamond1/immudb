@@ -990,6 +990,7 @@
 | b | [bool](#bool) |  |  |
 | bs | [bytes](#bytes) |  |  |
 | ts | [int64](#int64) |  |  |
+| f | [double](#double) |  |  |
 
 
 
