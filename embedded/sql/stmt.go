@@ -1944,7 +1944,7 @@ const (
 )
 
 type DataSource interface {
-	inferParameters(tx *SQLTx, params map[string]SQLValueType) error
+	SQLStmt
 	Resolve(tx *SQLTx, params map[string]interface{}, ScanSpecs *ScanSpecs) (RowReader, error)
 	Alias() string
 }
@@ -2191,6 +2191,56 @@ func (stmt *SelectStmt) genScanSpecs(tx *SQLTx, params map[string]interface{}) (
 	}, nil
 }
 
+type UnionStmt struct {
+	distinct    bool
+	left, right DataSource
+}
+
+func (stmt *UnionStmt) inferParameters(tx *SQLTx, params map[string]SQLValueType) error {
+	err := stmt.left.inferParameters(tx, params)
+	if err != nil {
+		return err
+	}
+
+	return stmt.right.inferParameters(tx, params)
+}
+
+func (stmt *UnionStmt) execAt(tx *SQLTx, params map[string]interface{}) (*SQLTx, error) {
+	_, err := stmt.left.execAt(tx, params)
+	if err != nil {
+		return tx, err
+	}
+
+	return stmt.right.execAt(tx, params)
+}
+
+func (stmt *UnionStmt) Resolve(tx *SQLTx, params map[string]interface{}, _ *ScanSpecs) (rowReader RowReader, err error) {
+	leftRowReader, err := stmt.left.Resolve(tx, params, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rightRowReader, err := stmt.right.Resolve(tx, params, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rowReader, err = newUnionRowReader([]RowReader{leftRowReader, rightRowReader})
+	if err != nil {
+		return nil, err
+	}
+
+	if stmt.distinct {
+		return newDistinctRowReader(rowReader)
+	}
+
+	return rowReader, nil
+}
+
+func (stmt *UnionStmt) Alias() string {
+	return ""
+}
+
 type tableRef struct {
 	db     string
 	table  string
@@ -2327,6 +2377,10 @@ func (stmt *tableRef) referencedTable(tx *SQLTx) (*Table, error) {
 
 func (stmt *tableRef) inferParameters(tx *SQLTx, params map[string]SQLValueType) error {
 	return nil
+}
+
+func (stmt *tableRef) execAt(tx *SQLTx, params map[string]interface{}) (*SQLTx, error) {
+	return tx, nil
 }
 
 func (stmt *tableRef) Resolve(tx *SQLTx, params map[string]interface{}, scanSpecs *ScanSpecs) (RowReader, error) {

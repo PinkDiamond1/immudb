@@ -1051,6 +1051,37 @@ func TestSelectStmt(t *testing.T) {
 	}
 }
 
+func TestSelectUnionStmt(t *testing.T) {
+	testCases := []struct {
+		input          string
+		expectedOutput []SQLStmt
+		expectedError  error
+	}{
+		{
+			input: "SELECT id, title FROM table1 UNION SELECT id, title FROM table1",
+			expectedOutput: []SQLStmt{
+				&SelectStmt{
+					distinct: false,
+					selectors: []Selector{
+						&ColSelector{col: "id"},
+						&ColSelector{col: "title"},
+					},
+					ds: &tableRef{table: "table1"},
+				}},
+			expectedError: nil,
+		},
+	}
+
+	for i, tc := range testCases {
+		res, err := ParseString(tc.input)
+		require.Equal(t, tc.expectedError, err, fmt.Sprintf("failed on iteration %d", i))
+
+		if tc.expectedError == nil {
+			require.Equal(t, tc.expectedOutput, res, fmt.Sprintf("failed on iteration %d", i))
+		}
+	}
+}
+
 func TestAggFnStmt(t *testing.T) {
 	testCases := []struct {
 		input          string

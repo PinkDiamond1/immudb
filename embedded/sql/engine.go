@@ -1165,7 +1165,7 @@ func (e *Engine) Query(sql string, params map[string]interface{}, tx *SQLTx) (Ro
 		return nil, ErrExpectingDQLStmt
 	}
 
-	stmt, ok := stmts[0].(*SelectStmt)
+	stmt, ok := stmts[0].(DataSource)
 	if !ok {
 		return nil, ErrExpectingDQLStmt
 	}
@@ -1173,7 +1173,7 @@ func (e *Engine) Query(sql string, params map[string]interface{}, tx *SQLTx) (Ro
 	return e.QueryPreparedStmt(stmt, params, tx)
 }
 
-func (e *Engine) QueryPreparedStmt(stmt *SelectStmt, params map[string]interface{}, tx *SQLTx) (rowReader RowReader, err error) {
+func (e *Engine) QueryPreparedStmt(stmt DataSource, params map[string]interface{}, tx *SQLTx) (rowReader RowReader, err error) {
 	if stmt == nil {
 		return nil, ErrIllegalArguments
 	}
